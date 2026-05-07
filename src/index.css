@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-primary: #2563eb;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-bento-bg: #0a0b10;
+  --color-bento-card: #161a23;
+  --color-bento-card-dark: #050505;
+  --color-bento-border: rgba(255, 255, 255, 0.1);
+}
+
+:root {
+  --bg-primary: #0a0b10;
+}
+
+body {
+  background: var(--bg-primary);
+  color: #cbd5e1;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.bento-card {
+  background: rgba(22, 26, 35, 0.5);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--bento-border);
+  border-radius: 1.25rem;
+}
+
+.bento-card-inner {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Price Scanner Pro",
+  "description": "A professional-grade QR/Barcode price scanner and shopping cart manager.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["Barcode Scanning", "Inventory Management"]
+}
