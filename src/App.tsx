@@ -46,6 +46,8 @@ export default function App() {
   const [currentCode, setCurrentCode] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isManualInput, setIsManualInput] = useState(false);
+  const [manualCode, setManualCode] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [showToast, setShowToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -82,6 +84,7 @@ export default function App() {
   };
 
   const handleScan = async (code: string) => {
+    if (!code) return;
     setLoading(true);
     setCurrentCode(code);
     try {
@@ -93,9 +96,13 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setScanResult(data.product);
+        setIsManualInput(false);
+        setManualCode("");
         triggerToast("Product recognized!", "success");
       } else {
         setIsNewProduct(true);
+        setIsManualInput(false);
+        setManualCode("");
       }
     } catch (err) {
       triggerToast("Scan lookup failed", "error");
@@ -192,8 +199,13 @@ export default function App() {
     scanner.start(
       { facingMode: "environment" },
       { 
-        fps: 10, 
-        qrbox: { width: 280, height: 160 },
+        fps: 20, 
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          return {
+            width: Math.min(viewfinderWidth * 0.8, 300),
+            height: Math.min(viewfinderHeight * 0.5, 180)
+          };
+        },
         aspectRatio: 1.5
       },
       (decodedText) => {
@@ -269,45 +281,98 @@ export default function App() {
               className="flex flex-col gap-4"
             >
               {/* Scanner Module */}
-              {!scanResult && !isNewProduct && (
-                <div className="bento-card overflow-hidden shadow-2xl aspect-[4/3] relative">
-                  <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                       <span className={cn("w-1.5 h-1.5 rounded-full", permissionDenied ? "bg-danger" : "bg-emerald-500 animate-pulse")} /> 
-                       {permissionDenied ? "Camera Blocked" : "Live Scanner"}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">FACING_ENVIRONMENT</span>
+              {!scanResult && !isNewProduct && !isManualInput && (
+                <div className="flex flex-col gap-4">
+                  <div className="bento-card overflow-hidden shadow-2xl aspect-[4/3] relative bg-black/40">
+                    <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                         <span className={cn("w-1.5 h-1.5 rounded-full", permissionDenied ? "bg-danger" : "bg-emerald-500 animate-pulse")} /> 
+                         {permissionDenied ? "Camera Blocked" : "Live Scanner"}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">FACING_ENVIRONMENT</span>
+                    </div>
+                    
+                    {permissionDenied ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-danger/10">
+                        <AlertCircle className="w-10 h-10 text-danger mb-4" />
+                        <h3 className="font-bold text-white uppercase tracking-tight mb-2">Permission Denied</h3>
+                        <p className="text-xs text-slate-400 mb-6 leading-relaxed max-w-[240px]">
+                          We need camera access to scan products. Please enable it in your browser settings.
+                        </p>
+                        <button 
+                          onClick={startScanner}
+                          className="px-6 py-2 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-xl shadow-white/5 hover:bg-slate-200 transition-all"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div id="reader" className="w-full h-full" />
+                        <div className="absolute inset-0 pointer-events-none border-[16px] border-bento-bg/60" />
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                          <div className="w-56 h-28 border-2 border-primary/40 rounded-xl relative">
+                            <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary" />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary" />
+                            <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary" />
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary" />
+                            <div className="absolute top-1/2 left-0 right-0 h-px bg-primary/40 animate-scan-line" />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  
-                  {permissionDenied ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-danger/10">
-                      <AlertCircle className="w-10 h-10 text-danger mb-4" />
-                      <h3 className="font-bold text-white uppercase tracking-tight mb-2">Permission Denied</h3>
-                      <p className="text-xs text-slate-400 mb-6 leading-relaxed max-w-[240px]">
-                        We need camera access to scan products. Please enable it in your browser settings.
-                      </p>
+                  <button 
+                    onClick={() => { stopScanner(); setIsManualInput(true); }}
+                    className="w-full py-3 bento-card-inner border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+                  >
+                    Enter Code Manually
+                  </button>
+                </div>
+              )}
+
+              {/* Manual Input Module */}
+              {isManualInput && !scanResult && !isNewProduct && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bento-card flex flex-col overflow-hidden"
+                >
+                  <div className="bg-slate-800 px-4 py-2 border-b border-white/10 flex justify-between items-center">
+                    <span className="text-white text-xs font-bold uppercase tracking-tighter">Manual Entry</span>
+                    <button onClick={() => setIsManualInput(false)} className="text-slate-500 hover:text-white">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="p-8">
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Serial / Barcode</label>
+                        <input 
+                          type="text" 
+                          placeholder="000000000000"
+                          autoFocus
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-4 focus:outline-none focus:border-primary font-mono text-lg tracking-widest uppercase transition-colors"
+                          value={manualCode}
+                          onChange={e => setManualCode(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleScan(manualCode)}
+                        />
+                      </div>
                       <button 
-                        onClick={startScanner}
-                        className="px-6 py-2 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-xl shadow-white/5 hover:bg-slate-200 transition-all"
+                        onClick={() => handleScan(manualCode)}
+                        className="w-full py-4 bg-primary text-white rounded-xl text-xs font-bold uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
                       >
-                        Try Again
+                        Submit Query
+                      </button>
+                      <button 
+                        onClick={() => { setIsManualInput(false); setManualCode(""); }}
+                        className="w-full text-[10px] font-bold text-slate-500 uppercase tracking-widest py-2"
+                      >
+                        Return to Scanner
                       </button>
                     </div>
-                  ) : (
-                    <>
-                      <div id="reader" className="w-full h-full grayscale brightness-110 contrast-125" />
-                      <div className="absolute inset-0 pointer-events-none border-[16px] border-bento-bg opacity-40" />
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="w-48 h-32 border-2 border-primary/40 rounded-xl relative">
-                          <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary" />
-                          <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary" />
-                          <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary" />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                  </div>
+                </motion.div>
               )}
 
               {/* Loading State */}
